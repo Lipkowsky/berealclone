@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,12 @@ export default function OnboardingScreen() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const { user, updateUser } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (user?.onboardingCompleted) {
+      router.push("/(tabs)");
+    }
+  }, [user]);
 
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();

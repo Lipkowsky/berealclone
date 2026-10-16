@@ -1,20 +1,15 @@
-import { Text, View, StyleSheet, TextInput } from "react-native";
-import { Image } from "expo-image";
-import { Link, router } from "expo-router";
-import { Button, Host } from "@expo/ui/swift-ui";
+import { Text, View, StyleSheet, TextInput, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 export default function Index() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.helloWroldTitle}>Hello World</Text>
-
-      <TextInput placeholder="Email" />
-
-      <Host>
-        <Button onPress={() => router.push("/about")}>
-          <Text>Navigate to About</Text>
-        </Button>
-      </Host>
-    </View>
+    <SafeAreaView
+      style={styles.container}
+      edges={["bottom", "top"]}
+    >
+      <TouchableOpacity style={styles.fab}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
@@ -24,11 +19,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  helloWroldTitle: {
-    color: "red",
+  fab: {
+
   },
-  image: {
-    width: 200,
-    height: 200,
-  },
+  fabText: {
+    
+  }
 });
