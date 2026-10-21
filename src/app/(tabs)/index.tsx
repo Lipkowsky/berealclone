@@ -12,11 +12,14 @@ import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Image } from "expo-image";
+import { usePosts } from "@/hooks/usePosts";
 export default function Index() {
   const router = useRouter();
   const [showPreview, setShowPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [description, setDescription] = useState<string>("");
+  const { createPost } = usePosts();
+  const [isUploading, setIsUploading] = useState(false);
 
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -35,6 +38,7 @@ export default function Index() {
     if (!result.canceled && result.assets[0]) {
       setPreviewImage(result.assets[0].uri);
       setShowPreview(true);
+      setDescription("");
     }
   };
 
@@ -64,20 +68,42 @@ export default function Index() {
     if (!result.canceled && result.assets[0]) {
       setPreviewImage(result.assets[0].uri);
       setShowPreview(true);
+      setDescription("");
+    }
+  };
+  const handlePost = async () => {
+    if (!previewImage) return;
+    setIsUploading(true);
+    try {
+      await createPost(previewImage, description);
+      setPreviewImage(null);
+      setDescription("");
+      setShowPreview(false);
+    } catch (error) {
+      console.error("Error creating post", error);
+      Alert.alert("Error", "Failed to create post. Please try again.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "top"]}>
+      {/* {LIST} */}
+
       <TouchableOpacity style={styles.fab} onPress={showImagePicker}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
-      <Modal visible={true} transparent animationType="fade">
-        <View>
-          <View>
-            <Text>Preview your Post </Text>
+      <Modal visible={showPreview} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Preview your Post </Text>
             {previewImage && (
-              <Image source={{ uri: previewImage }} contentFit="cover" />
+              <Image
+                source={{ uri: previewImage }}
+                style={styles.previewImage}
+                contentFit="cover"
+              />
             )}
             <TextInput
               placeholder="Add description"
@@ -87,13 +113,23 @@ export default function Index() {
               multiline
               maxLength={500}
               textAlignVertical="top"
+              style={styles.descriptionInput}
             />
-            <View>
-              <TouchableOpacity>
-                <Text>Cancel</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowPreview(false);
+                  setPreviewImage(null);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity>
-                <Text>Post</Text>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.postButton]}
+                onPress={handlePost}
+              >
+                <Text style={styles.postButtonText}>Post</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -115,6 +151,7 @@ const styles = StyleSheet.create({
     right: 24,
     width: 56,
     height: 56,
+    borderRadius: 28,
     backgroundColor: "#000",
     justifyContent: "center",
     alignItems: "center",
@@ -123,7 +160,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    borderRadius: 28,
   },
   fabText: {
     color: "#fff",
@@ -131,15 +167,156 @@ const styles = StyleSheet.create({
     fontWeight: "300",
     lineHeight: 32,
   },
-  modalContainer: {},
-  modalContent: {},
-  modalTitle: {},
-  previewImage: {},
-  descriptionInput: {},
-  modalButtons: {},
-  modalButton: {},
-  cancelButton: {},
-  cancelButtonText:{},
-  postButton: {},
-  postButtonText: {},
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  previewImage: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  descriptionInput: {
+    width: "100%",
+    minHeight: 80,
+    maxHeight: 120,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    color: "#000",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#f5f5f5",
+  },
+  cancelButtonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  postButton: {
+    backgroundColor: "#000",
+  },
+  postButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  content: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  emptyContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+
+  postContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  postHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+  },
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  avatarPlaceholder: {
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+  },
+  timeAgo: {
+    fontSize: 12,
+    color: "#666",
+  },
+  timeRemainingBadge: {
+    backgroundColor: "#000",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  timeRemainingText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  postImage: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  postFooter: {
+    padding: 16,
+  },
+  postDescription: {
+    fontSize: 15,
+    color: "#000",
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  postInfo: {
+    fontSize: 14,
+    color: "#666",
+  },
 });
