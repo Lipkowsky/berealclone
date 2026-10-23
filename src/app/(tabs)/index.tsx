@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import {
   Text,
   View,
@@ -7,19 +6,87 @@ import {
   Alert,
   Modal,
   TextInput,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Image } from "expo-image";
-import { usePosts } from "@/hooks/usePosts";
+import { Post, usePosts } from "@/hooks/usePosts";
+import { useAuth } from "@/context/AuthContext";
+import { formatTimeAgo, formatTimeRemaining } from "@/lib/date-helper";
 export default function Index() {
-  const router = useRouter();
   const [showPreview, setShowPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [description, setDescription] = useState<string>("");
-  const { createPost } = usePosts();
+  const { createPost, posts, refreshPosts } = usePosts();
+  const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Check if user has an active post
+  const userActivePost = posts.find(
+    (post) =>
+      post.user_id === user?.id &&
+      post.is_active &&
+      new Date(post.expires_at) > new Date(),
+  );
+
+  const hasActivePost = !!userActivePost;
+
+  interface PostCardProps {
+    post: Post;
+    currentUserId?: string;
+  }
+
+  const PostCard = ({ post, currentUserId }: PostCardProps) => {
+    const postUser = post.profiles;
+    const isOwnPost = post.user_id === currentUserId;
+    return (
+      <View style={styles.postContainer}>
+        <View style={styles.postHeader}>
+          <View style={styles.userInfo}>
+            {postUser?.profile_image_url ? (
+              <Image
+                source={{ uri: postUser.profile_image_url }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>
+                  {postUser?.name?.[0]?.toUpperCase() || "U"}
+                </Text>
+              </View>
+            )}
+            <View>
+              <Text>{isOwnPost ? "You" : `@${postUser?.username}`}</Text>
+              <Text>{formatTimeAgo(post.created_at)}</Text>
+            </View>
+          </View>
+          {/* Post Content */}
+          <View style={styles.timeRemainingBadge}>
+            <Text style={styles.timeRemainingText}>
+              {formatTimeRemaining(post.expires_at)}
+            </Text>
+          </View>
+        </View>
+        <Image
+          source={{ uri: post.image_url }}
+          style={styles.postImage}
+          contentFit="cover"
+        />
+        <View style={styles.postFooter}>
+          {post.description && <Text>{post.description}</Text>}
+          <Text style={styles.postInfo}>
+            {isOwnPost ? "Your Post" : `${postUser?.name}' post`} Expires in{" "}
+            {formatTimeRemaining(post.expires_at)}
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -87,17 +154,46 @@ export default function Index() {
     }
   };
 
+  const renderPost = ({ item }: { item: Post }) => (
+    <PostCard post={item} currentUserId={user?.id} />
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshPosts();
+    } catch (error) {
+      console.error("error refreshing posts: ", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "top"]}>
       {/* {LIST} */}
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          posts.length === 0 ? styles.emptyContent : styles.content
+        }
+        ListEmptyComponent={<Text>No posts found</Text>}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      />
 
       <TouchableOpacity style={styles.fab} onPress={showImagePicker}>
-        <Text style={styles.fabText}>+</Text>
+        <Text style={styles.fabText}>{hasActivePost ? "↻" : "+"}</Text>
       </TouchableOpacity>
       <Modal visible={showPreview} transparent animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Preview your Post </Text>
+            <Text>
+              {hasActivePost ? "Replace Your Post" : "Preview Your Post"}
+            </Text>
             {previewImage && (
               <Image
                 source={{ uri: previewImage }}
@@ -128,8 +224,15 @@ export default function Index() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.postButton]}
                 onPress={handlePost}
+                disabled={isUploading}
               >
-                <Text style={styles.postButtonText}>Post</Text>
+                {isUploading ? (
+                  <ActivityIndicator size={24} color="#fff" />
+                ) : (
+                  <Text style={styles.postButtonText}>
+                    {hasActivePost ? "Replace" : "Post"}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

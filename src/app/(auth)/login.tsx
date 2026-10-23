@@ -2,12 +2,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,20 +16,22 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { signIn } = useAuth();
 
-  const handleSignIn = async () => {
+  const router = useRouter();
+
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields");
     }
-    
+
     setIsLoading(true);
     try {
       await signIn(email, password);
-      router.push("/(auth)/onboarding")
+      router.push("/(tabs)");
     } catch (error) {
-      Alert.alert("Error", "Failed to signup. Please try again.");
+      console.error(error);
+      Alert.alert("Error", "Failed to sign in. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -36,9 +39,8 @@ export default function LoginScreen() {
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign In to Continue</Text>
-
         <View style={styles.form}>
           <TextInput
             placeholder="Email..."
@@ -46,29 +48,35 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoComplete="email"
             autoCapitalize="none"
-            style={styles.input}
+            value={email}
             onChangeText={setEmail}
+            style={styles.input}
           />
-
           <TextInput
             placeholder="Password..."
             placeholderTextColor={"#999"}
-            secureTextEntry
             autoComplete="password"
+            secureTextEntry
             autoCapitalize="none"
+            value={password}
             onChangeText={setPassword}
             style={styles.input}
           />
-          <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            {isLoading ? (
+              <ActivityIndicator size={24} color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.push("/(auth)/signup")}
           >
             <Text style={styles.linkButtonText}>
-              Don't have an account{" "}
-              <Text style={styles.linkButtonBold}>Sign Up</Text>
+              Don't have an account?{" "}
+              <Text style={styles.linkButtonTextBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -127,7 +135,7 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
   },
-  linkButtonBold: {
+  linkButtonTextBold: {
     fontWeight: "600",
     color: "#000",
   },

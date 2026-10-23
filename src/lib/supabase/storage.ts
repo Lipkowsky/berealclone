@@ -21,7 +21,7 @@ export const uploadProfileImage = async (userId: string, imageUri: string) => {
     const { data: urlData } = supabase.storage
       .from("profiles")
       .getPublicUrl(fileName);
-    return urlData.publicUrl;
+      return `${urlData.publicUrl}?v=${Date.now()}`;
   } catch (error) {
     console.log("Error uploading profile image", error);
     throw error;
@@ -30,18 +30,18 @@ export const uploadProfileImage = async (userId: string, imageUri: string) => {
 
 export const uploadPostImage = async (userId: string, imageUri: string) => {
   try {
-    const fileExtenstion = imageUri.split(".").pop() || "jpg";
-    // Używamy unikalnej nazwy pliku, np. opierając ją na aktualnym czasie
-    const fileName = `${userId}/${Date.now()}.${fileExtenstion}`;
+    const fileExtension = imageUri.split(".").pop() || "jpg";
+    const fileName = `${userId}/${Date.now()}.${fileExtension}`;
     const file = new File(imageUri);
     const bytes = await file.bytes();
 
     const { error } = await supabase.storage
       .from("posts")
       .upload(fileName, bytes, {
-        contentType: `image/${fileExtenstion}`,
-        upsert: true,
+        contentType: `image/${fileExtension}`,
+        upsert: false,
       });
+
     if (error) {
       throw error;
     }
@@ -49,9 +49,10 @@ export const uploadPostImage = async (userId: string, imageUri: string) => {
     const { data: urlData } = supabase.storage
       .from("posts")
       .getPublicUrl(fileName);
+
     return urlData.publicUrl;
   } catch (error) {
-    console.log("Error uploading post image", error);
+    console.error("Error uploading post image:", error);
     throw error;
   }
-};
+}
